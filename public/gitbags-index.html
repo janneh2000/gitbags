@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitBags — Fund Open Source Forever</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --green: #00ff88;
+      --green-dim: #00cc6a;
+      --green-glow: rgba(0, 255, 136, 0.15);
+      --green-glow-strong: rgba(0, 255, 136, 0.3);
+      --bg: #080b08;
+      --bg2: #0d120d;
+      --bg3: #111811;
+      --border: rgba(0, 255, 136, 0.12);
+      --border-hover: rgba(0, 255, 136, 0.35);
+      --text: #e2ebe2;
+      --text-dim: #7a9a7a;
+      --text-muted: #3d5a3d;
+      --red: #ff4466;
+      --yellow: #ffcc44;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Syne', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── GRID BG ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,136,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(8, 11, 8, 0.85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Space Mono', monospace;
+      font-size: 18px;
+      color: var(--green);
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--text-dim); }
+
+    .nav-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      color: var(--green);
+      border: 1px solid var(--green);
+      padding: 3px 10px;
+      border-radius: 2px;
+      letter-spacing: 1px;
+    }
+
+    /* ── HERO ── */
+    #hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px 40px;
+    }
+
+    .hero-eyebrow {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      color: var(--green);
+      margin-bottom: 28px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.2s forwards;
+    }
+
+    h1 {
+      font-size: clamp(42px, 8vw, 96px);
+      font-weight: 800;
+      line-height: 0.95;
+      letter-spacing: -3px;
+      margin-bottom: 28px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.4s forwards;
+    }
+
+    h1 .accent { color: var(--green); }
+
+    .hero-sub {
+      font-size: clamp(15px, 2vw, 18px);
+      color: var(--text-dim);
+      max-width: 520px;
+      line-height: 1.6;
+      margin-bottom: 48px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.6s forwards;
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      justify-content: center;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 0.8s forwards;
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 14px 32px;
+      border: none;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+    .btn-primary:hover { background: #33ffaa; transform: translateY(-2px); box-shadow: 0 8px 30px var(--green-glow-strong); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--green);
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      padding: 13px 32px;
+      border: 1px solid var(--border-hover);
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+    }
+    .btn-ghost:hover { background: var(--green-glow); border-color: var(--green); }
+
+    /* stats row */
+    .stats-row {
+      display: flex;
+      gap: 40px;
+      margin-top: 72px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease 1s forwards;
+    }
+    .stat { text-align: center; }
+    .stat-val {
+      font-family: 'Space Mono', monospace;
+      font-size: 28px;
+      color: var(--green);
+      display: block;
+    }
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      margin-top: 4px;
+    }
+
+    /* ── HOW IT WORKS ── */
+    #how {
+      position: relative;
+      z-index: 1;
+      padding: 100px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--green);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800;
+      letter-spacing: -1.5px;
+      margin-bottom: 60px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 2px;
+    }
+
+    .step {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 36px 32px;
+      position: relative;
+      transition: all 0.3s;
+    }
+    .step:hover {
+      border-color: var(--border-hover);
+      background: var(--bg3);
+    }
+    .step:first-child { border-left: 3px solid var(--green); }
+
+    .step-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--green);
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+
+    .step-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    .step-desc { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+
+    .step-icon {
+      font-size: 32px;
+      margin-bottom: 20px;
+    }
+
+    /* ── APP ── */
+    #app {
+      position: relative;
+      z-index: 1;
+      padding: 80px 24px;
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    .app-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 48px;
+    }
+
+    .app-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      letter-spacing: 2px;
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .app-title::before {
+      content: '';
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: blink 1.2s ease infinite;
+    }
+
+    .input-group { margin-bottom: 24px; }
+    .input-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .input-wrap {
+      display: flex;
+      gap: 12px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      padding: 14px 18px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: var(--green); }
+    input[type="text"]::placeholder { color: var(--text-muted); }
+
+    .fetch-btn {
+      background: var(--green);
+      color: #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 0 24px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .fetch-btn:hover { background: #33ffaa; }
+    .fetch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* contributors list */
+    #contributors-section { display: none; }
+    #contributors-section.visible { display: block; }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 32px 0;
+    }
+
+    .contributors-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .contrib-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+    }
+
+    .contrib-total {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--green);
+    }
+
+    .contributor-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .contributor-item:last-child { border-bottom: none; }
+
+    .contrib-avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+    }
+
+    .contrib-name {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+    }
+    .contrib-commits {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    .contrib-pct {
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      color: var(--green);
+      min-width: 45px;
+      text-align: right;
+    }
+
+    .contrib-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100px;
+      height: 3px;
+      background: var(--border);
+      outline: none;
+      border-radius: 2px;
+    }
+    .contrib-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px; height: 14px;
+      background: var(--green);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    /* token config */
+    #token-section { display: none; }
+    #token-section.visible { display: block; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .launch-preview {
+      background: var(--bg);
+      border: 1px solid var(--green);
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+
+    .preview-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .preview-row:last-child { border-bottom: none; }
+    .preview-key { color: var(--text-dim); font-family: 'Space Mono', monospace; font-size: 11px; }
+    .preview-val { color: var(--text); font-family: 'Space Mono', monospace; font-size: 12px; }
+    .preview-val.green { color: var(--green); }
+
+    .launch-btn {
+      width: 100%;
+      background: var(--green);
+      color: #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 18px;
+      border: none;
+      cursor: pointer;
+      letter-spacing: 1px;
+      transition: all 0.3s;
+      margin-top: 8px;
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+    }
+    .launch-btn:hover { background: #33ffaa; box-shadow: 0 0 40px var(--green-glow-strong); }
+    .launch-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* success state */
+    #success-section { display: none; }
+    #success-section.visible {
+      display: block;
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    .success-icon { font-size: 64px; margin-bottom: 20px; }
+    .success-title {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      color: var(--green);
+      margin-bottom: 12px;
+    }
+    .success-desc { color: var(--text-dim); font-size: 15px; line-height: 1.6; margin-bottom: 32px; }
+
+    .tx-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--green);
+      word-break: break-all;
+      text-align: left;
+      margin-bottom: 24px;
+    }
+    .tx-label { color: var(--text-muted); margin-bottom: 6px; }
+
+    /* ── TECH ── */
+    #tech {
+      position: relative;
+      z-index: 1;
+      padding: 80px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 2px;
+      margin-top: 40px;
+    }
+
+    .tech-item {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 24px 20px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .tech-item:hover { border-color: var(--border-hover); background: var(--bg3); }
+
+    .tech-logo { font-size: 28px; margin-bottom: 10px; }
+    .tech-name { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--green); margin-bottom: 4px; }
+    .tech-role { font-size: 11px; color: var(--text-dim); }
+
+    /* ── FOOTER ── */
+    footer {
+      position: relative;
+      z-index: 1;
+      border-top: 1px solid var(--border);
+      padding: 32px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 80px;
+    }
+
+    .footer-logo { font-family: 'Space Mono', monospace; font-size: 14px; color: var(--green); }
+    .footer-built { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text-muted); letter-spacing: 1px; }
+
+    /* ── LOADING / ERROR ── */
+    .loading-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--text-dim);
+      display: none;
+      margin-top: 12px;
+    }
+    .loading-text.visible { display: block; }
+
+    .error-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--red);
+      display: none;
+      margin-top: 12px;
+    }
+    .error-text.visible { display: block; }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .animate-in { animation: slideIn 0.4s ease forwards; }
+
+    /* scrolled-into-view */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* pill */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-glow);
+      border: 1px solid var(--border-hover);
+      padding: 6px 14px;
+      border-radius: 2px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--green);
+      margin-bottom: 40px;
+    }
+    .pill-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: blink 1.2s infinite; }
+
+    @media (max-width: 640px) {
+      nav { padding: 0 20px; }
+      .app-card { padding: 28px 20px; }
+      .two-col { grid-template-columns: 1fr; }
+      .stats-row { gap: 24px; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">git<span>bags</span>.fm</div>
+  <span class="nav-badge">BAGS HACKATHON 2025</span>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="pill"><span class="pill-dot"></span> Built on Solana · Powered by Bags.fm</div>
+  <div class="hero-eyebrow">OPEN SOURCE FUNDING, REINVENTED</div>
+  <h1>Your code earns<br /><span class="accent">forever.</span></h1>
+  <p class="hero-sub">Launch a Bags token for any GitHub repo. Trading fees auto-split to every contributor — proportional to their commits. No custody. No middle man. No cap.</p>
+  <div class="cta-row">
+    <button class="btn-primary" onclick="scrollToApp()">Launch a Repo Token →</button>
+    <button class="btn-ghost" onclick="document.getElementById('how').scrollIntoView({behavior:'smooth'})">How it works</button>
+  </div>
+  <div class="stats-row">
+    <div class="stat">
+      <span class="stat-val">1%</span>
+      <span class="stat-label">OF ALL VOLUME</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val">∞</span>
+      <span class="stat-label">CONTRIBUTORS PAID</span>
+    </div>
+    <div class="stat">
+      <span class="stat-val">0</span>
+      <span class="stat-label">CUSTODY RISK</span>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="reveal">
+    <div class="section-label">// HOW IT WORKS</div>
+    <div class="section-title">Three steps.<br />Infinite earnings.</div>
+  </div>
+  <div class="steps reveal">
+    <div class="step">
+      <div class="step-icon">🔗</div>
+      <div class="step-num">01 / FETCH</div>
+      <div class="step-title">Paste your repo</div>
+      <div class="step-desc">GitBags pulls your top contributors from GitHub — commits, PRs, impact. No GitHub OAuth needed for public repos.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">⚖️</div>
+      <div class="step-num">02 / CONFIGURE</div>
+      <div class="step-title">Set your splits</div>
+      <div class="step-desc">Drag to assign fee percentages. Up to 100 contributors supported. Bags.fm enforces the split on-chain — immutable.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">🚀</div>
+      <div class="step-num">03 / LAUNCH</div>
+      <div class="step-title">Token goes live</div>
+      <div class="step-desc">A Bags token launches for your repo. Every trade generates 1% fee revenue, split forever to your contributors' wallets.</div>
+    </div>
+    <div class="step">
+      <div class="step-icon">💸</div>
+      <div class="step-num">04 / EARN</div>
+      <div class="step-title">Passive forever</div>
+      <div class="step-desc">Contributors with no wallet? Privy creates embedded wallets for them. They just claim earnings — no crypto knowledge needed.</div>
+    </div>
+  </div>
+</section>
+
+<!-- APP -->
+<section id="app">
+  <div class="reveal">
+    <div class="section-label">// LAUNCH NOW</div>
+    <div class="section-title">Fund your contributors.</div>
+  </div>
+
+  <div class="app-card reveal">
+    <div class="app-title">GITBAGS TERMINAL</div>
+
+    <!-- STEP 1: GitHub URL -->
+    <div id="step-repo">
+      <div class="input-group">
+        <label class="input-label">// GITHUB REPO URL</label>
+        <div class="input-wrap">
+          <input type="text" id="repo-input" placeholder="https://github.com/owner/repo" />
+          <button class="fetch-btn" id="fetch-btn" onclick="fetchContributors()">FETCH →</button>
+        </div>
+        <div class="loading-text" id="loading-text">⟳ fetching contributors from GitHub API...</div>
+        <div class="error-text" id="error-text"></div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- STEP 2: Contributors -->
+    <div id="contributors-section">
+      <div class="contributors-header">
+        <span class="contrib-label">// TOP CONTRIBUTORS</span>
+        <span class="contrib-total" id="total-pct">Total: 100%</span>
+      </div>
+      <div id="contributors-list"></div>
+      <hr class="divider" />
+      <button class="btn-primary" onclick="showTokenConfig()" style="width:100%; text-align:center; padding:14px">CONFIGURE TOKEN →</button>
+    </div>
+
+    <!-- STEP 3: Token config -->
+    <div id="token-section">
+      <div class="contrib-label" style="margin-bottom:20px">// TOKEN DETAILS</div>
+      <div class="two-col">
+        <div class="input-group">
+          <label class="input-label">TOKEN NAME</label>
+          <input type="text" id="token-name" placeholder="My Repo Token" />
+        </div>
+        <div class="input-group">
+          <label class="input-label">TICKER</label>
+          <input type="text" id="token-ticker" placeholder="MRT" maxlength="8" />
+        </div>
+      </div>
+      <div class="input-group">
+        <label class="input-label">DESCRIPTION</label>
+        <input type="text" id="token-desc" placeholder="Support open source contributors of [repo]" />
+      </div>
+
+      <div class="launch-preview" id="launch-preview">
+        <div class="preview-row">
+          <span class="preview-key">REPO</span>
+          <span class="preview-val green" id="prev-repo">—</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-key">CONTRIBUTORS</span>
+          <span class="preview-val" id="prev-contribs">—</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-key">FEE SPLIT</span>
+          <span class="preview-val green">1% of all trading volume</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-key">NETWORK</span>
+          <span class="preview-val">Solana (Devnet demo)</span>
+        </div>
+        <div class="preview-row">
+          <span class="preview-key">WALLET INFRA</span>
+          <span class="preview-val">Privy embedded wallets</span>
+        </div>
+      </div>
+
+      <button class="launch-btn" id="launch-btn" onclick="launchToken()">⚡ LAUNCH TOKEN ON BAGS.FM</button>
+    </div>
+
+    <!-- SUCCESS -->
+    <div id="success-section">
+      <div class="success-icon">✅</div>
+      <div class="success-title">Token Launched!</div>
+      <div class="success-desc" id="success-desc">Your repo now has a live Bags token. Every trade generates earnings for your contributors — automatically, forever.</div>
+      <div class="tx-box">
+        <div class="tx-label">// TRANSACTION SIGNATURE (devnet)</div>
+        <div id="tx-hash">5xKjP...demo</div>
+      </div>
+      <button class="btn-primary" onclick="resetApp()" style="margin-top:8px">LAUNCH ANOTHER →</button>
+    </div>
+
+  </div>
+</section>
+
+<!-- TECH STACK -->
+<section id="tech">
+  <div class="reveal">
+    <div class="section-label">// POWERED BY</div>
+    <div class="section-title">Built on the best.</div>
+  </div>
+  <div class="tech-grid reveal">
+    <div class="tech-item">
+      <div class="tech-logo">🟣</div>
+      <div class="tech-name">Bags.fm</div>
+      <div class="tech-role">Token launch + fee splits</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-logo">◎</div>
+      <div class="tech-name">Solana</div>
+      <div class="tech-role">L1 settlement</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-logo">🔴</div>
+      <div class="tech-name">Helius</div>
+      <div class="tech-role">RPC + webhooks</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-logo">🔐</div>
+      <div class="tech-name">Privy</div>
+      <div class="tech-role">Embedded wallets</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-logo">🐙</div>
+      <div class="tech-name">GitHub API</div>
+      <div class="tech-role">Contributor data</div>
+    </div>
+    <div class="tech-item">
+      <div class="tech-logo">👁️</div>
+      <div class="tech-name">Birdeye</div>
+      <div class="tech-role">Price analytics</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">gitbags.fm</div>
+  <div class="footer-built">BUILT FOR BAGS HACKATHON · 2025 · BY ALIE RIVALDO JANNEH</div>
+</footer>
+
+<script>
+  // ── SCROLL REVEAL ──
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+  function scrollToApp() {
+    document.getElementById('app').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ── STATE ──
+  let contributors = [];
+  let repoSlug = '';
+
+  // ── FETCH CONTRIBUTORS ──
+  async function fetchContributors() {
+    const raw = document.getElementById('repo-input').value.trim();
+    const match = raw.match(/github\.com\/([^\/]+\/[^\/]+)/);
+    if (!match) {
+      showError('Please enter a valid GitHub repo URL (e.g. https://github.com/owner/repo)');
+      return;
+    }
+    repoSlug = match[1].replace(/\/$/, '');
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch(`https://api.github.com/repos/${repoSlug}/contributors?per_page=8`);
+      if (!res.ok) throw new Error(res.status === 404 ? 'Repo not found or private.' : 'GitHub API error.');
+      const data = await res.json();
+      if (!data.length) throw new Error('No contributors found.');
+      contributors = data.slice(0, 8);
+      renderContributors();
+    } catch (e) {
+      showError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderContributors() {
+    // auto-distribute: maintainer 40%, rest split evenly
+    const n = contributors.length;
+    const mainPct = 40;
+    const restPct = Math.floor(60 / (n - 1)) || 0;
+    const remainder = 60 - restPct * (n - 1);
+
+    contributors = contributors.map((c, i) => ({
+      ...c,
+      pct: i === 0 ? mainPct : (i === 1 ? restPct + remainder : restPct)
+    }));
+
+    const list = document.getElementById('contributors-list');
+    list.innerHTML = '';
+
+    contributors.forEach((c, i) => {
+      const item = document.createElement('div');
+      item.className = 'contributor-item animate-in';
+      item.style.animationDelay = `${i * 60}ms`;
+      item.innerHTML = `
+        <img class="contrib-avatar" src="${c.avatar_url}" alt="${c.login}" />
+        <div>
+          <div class="contrib-name">${c.login}</div>
+          <div class="contrib-commits">${c.contributions.toLocaleString()} commits</div>
+        </div>
+        <input type="range" class="contrib-slider" min="0" max="80" value="${c.pct}"
+          oninput="updatePct(${i}, this.value)" />
+        <div class="contrib-pct" id="pct-${i}">${c.pct}%</div>
+      `;
+      list.appendChild(item);
+    });
+
+    document.getElementById('contributors-section').classList.add('visible');
+    updateTotal();
+  }
+
+  function updatePct(idx, val) {
+    contributors[idx].pct = parseInt(val);
+    document.getElementById(`pct-${idx}`).textContent = val + '%';
+    updateTotal();
+  }
+
+  function updateTotal() {
+    const total = contributors.reduce((s, c) => s + c.pct, 0);
+    const el = document.getElementById('total-pct');
+    el.textContent = `Total: ${total}%`;
+    el.style.color = total === 100 ? 'var(--green)' : 'var(--red)';
+  }
+
+  function showTokenConfig() {
+    const total = contributors.reduce((s, c) => s + c.pct, 0);
+    if (total !== 100) { showError('Splits must add up to exactly 100%'); return; }
+    setError('');
+
+    // pre-fill token name from repo
+    const parts = repoSlug.split('/');
+    const repoName = parts[1] || parts[0];
+    document.getElementById('token-name').value = repoName + ' Contributors';
+    document.getElementById('token-ticker').value = repoName.slice(0,4).toUpperCase() + 'C';
+    document.getElementById('token-desc').value = `Support the open source contributors of ${repoSlug}`;
+
+    // fill preview
+    document.getElementById('prev-repo').textContent = repoSlug;
+    document.getElementById('prev-contribs').textContent = contributors.length + ' contributors';
+
+    document.getElementById('token-section').classList.add('visible');
+    document.getElementById('token-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ── LAUNCH TOKEN (devnet simulation) ──
+  async function launchToken() {
+    const name = document.getElementById('token-name').value.trim();
+    const ticker = document.getElementById('token-ticker').value.trim();
+    if (!name || !ticker) { showError('Please fill in token name and ticker.'); return; }
+
+    const btn = document.getElementById('launch-btn');
+    btn.disabled = true;
+    btn.textContent = '⟳ Launching on devnet...';
+
+    // Simulate async launch
+    await new Promise(r => setTimeout(r, 2200));
+
+    // Show success
+    const fakeTx = Array.from({length: 64}, () => '0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
+    document.getElementById('tx-hash').textContent = fakeTx;
+    document.getElementById('success-desc').textContent =
+      `"${name}" ($${ticker}) is live on Bags.fm. ${contributors.length} contributors will earn fee splits automatically from every trade.`;
+
+    document.getElementById('token-section').classList.remove('visible');
+    document.getElementById('contributors-section').classList.remove('visible');
+    document.getElementById('success-section').classList.add('visible');
+    document.getElementById('success-section').scrollIntoView({ behavior: 'smooth' });
+
+    btn.disabled = false;
+    btn.textContent = '⚡ LAUNCH TOKEN ON BAGS.FM';
+  }
+
+  function resetApp() {
+    document.getElementById('repo-input').value = '';
+    document.getElementById('contributors-section').classList.remove('visible');
+    document.getElementById('token-section').classList.remove('visible');
+    document.getElementById('success-section').classList.remove('visible');
+    contributors = []; repoSlug = '';
+    document.getElementById('app').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // ── HELPERS ──
+  function setLoading(v) {
+    document.getElementById('loading-text').classList.toggle('visible', v);
+    document.getElementById('fetch-btn').disabled = v;
+  }
+
+  function setError(msg) {
+    const el = document.getElementById('error-text');
+    el.textContent = msg;
+    el.classList.toggle('visible', !!msg);
+  }
+
+  function showError(msg) { setError(msg); }
+
+  // Handle Enter key
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('repo-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') fetchContributors();
+    });
+  });
+</script>
+</body>
+</html>
