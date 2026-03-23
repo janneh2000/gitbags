@@ -1159,34 +1159,29 @@
         throw new Error(data.error || 'API error');
       }
 
-      // Sign transactions with Phantom
+      // Collect all transactions to sign in order
       btn.textContent = '⟳ Sign in Phantom wallet...';
       const phantom = window.solana;
-      const signedTxs = [];
+      const allTxs = [
+        ...(data.feeShareTransactions || []),
+        data.launchTransaction,
+      ].filter(Boolean);
 
-      for (const txBase64 of data.transactions) {
-        const txBytes = Uint8Array.from(atob(txBase64), c => c.charCodeAt(0));
-        const signed = await phantom.signTransaction({
-          serialize: () => txBytes,
-        });
-        signedTxs.push(signed);
+      // Decode base58 → Uint8Array using Solana's bs58
+      // Phantom accepts raw bytes via signAndSendTransaction
+      let lastSig = null;
+      for (const txBase58 of allTxs) {
+        // decode base58 manually (Phantom handles versioned txs natively)
+        const bytes = base58ToBytes(txBase58);
+        const { VersionedTransaction } = await import('https://esm.sh/@solana/web3.js@1.98.4');
+        const vtx = VersionedTransaction.deserialize(bytes);
+        btn.textContent = '⟳ Broadcasting to Solana...';
+        const { signature } = await phantom.signAndSendTransaction(vtx);
+        lastSig = signature;
       }
 
-      // Broadcast via Helius RPC
-      btn.textContent = '⟳ Broadcasting to Solana...';
-      const RPC = 'https://mainnet.helius-rpc.com/?api-key=demo'; // replace with env key
-      const broadcastRes = await fetch(RPC, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0', id: 1, method: 'sendTransaction',
-          params: [btoa(String.fromCharCode(...signedTxs[0].serialize())), { encoding: 'base64' }],
-        }),
-      });
-      const { result: txSig } = await broadcastRes.json();
-
       // Show success with real mint
-      showSuccess(name, ticker, data.mint, txSig, true);
+      showSuccess(name, ticker, data.tokenMint, lastSig, true);
 
     } catch (err) {
       console.error(err);
@@ -1335,6 +1330,25 @@
       const net = document.getElementById('prev-network');
       if (net) net.textContent = 'Solana Mainnet';
     }
+  }
+
+  // ── BASE58 DECODER ──
+  const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  function base58ToBytes(str) {
+    let result = BigInt(0);
+    for (const char of str) {
+      const idx = BASE58_ALPHABET.indexOf(char);
+      if (idx < 0) throw new Error('Invalid base58 char: ' + char);
+      result = result * BigInt(58) + BigInt(idx);
+    }
+    const hex = result.toString(16).padStart(2, '0');
+    const padded = hex.length % 2 ? '0' + hex : hex;
+    const bytes = new Uint8Array(padded.match(/.{2}/g).map(b => parseInt(b, 16)));
+    // add leading zero bytes for leading '1's
+    const leading = str.match(/^1*/)[0].length;
+    const full = new Uint8Array(leading + bytes.length);
+    full.set(bytes, leading);
+    return full;
   }
 
   // Handle Enter key

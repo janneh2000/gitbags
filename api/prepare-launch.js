@@ -1,15 +1,18 @@
 // GitBags — Serverless API: Prepare Token Launch
-// Calls Bags REST API to create metadata + fee-share config + unsigned transaction
-// Frontend receives the unsigned tx, signs with Phantom, then broadcasts
+// Correct Bags API: https://public-api-v2.bags.fm/api/v1/
+//
+// Flow:
+//   1. POST /token-launch/create-token-info   → get tokenMint + tokenMetadata (IPFS URI)
+//   2. POST /fee-share/config                 → get meteoraConfigKey + fee-share setup tx
+//   3. POST /token-launch/create-launch-transaction → get signed launch tx
+//   Frontend signs & broadcasts both txs with Phantom
 
-const BAGS_BASE_URL = 'https://api.bags.fm/api/v2';
+const BASE = 'https://public-api-v2.bags.fm/api/v1';
 
 export default async function handler(req, res) {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -17,112 +20,100 @@ export default async function handler(req, res) {
   if (!apiKey) {
     return res.status(500).json({
       error: 'BAGS_API_KEY not configured',
-      hint: 'Add BAGS_API_KEY to your Vercel environment variables at vercel.com/jannehs-projects/gitbags/settings/environment-variables',
+      hint: 'Add BAGS_API_KEY to Vercel environment variables',
       docUrl: 'https://dev.bags.fm'
     });
   }
 
-  const { name, symbol, description, imageUrl, creatorWallet, feeShares, repoUrl } = req.body;
+  const { name, symbol, description, imageUrl, creatorWallet, feeShares, repoUrl, website } = req.body;
 
-  // Validate
   if (!name || !symbol || !creatorWallet) {
     return res.status(400).json({ error: 'name, symbol, and creatorWallet are required' });
   }
-  if (!feeShares || !Array.isArray(feeShares) || feeShares.length === 0) {
+  if (!feeShares?.length) {
     return res.status(400).json({ error: 'feeShares array is required' });
   }
-  const totalPct = feeShares.reduce((s, f) => s + f.percentage, 0);
+  const totalPct = feeShares.reduce((s, f) => s + (f.percentage || 0), 0);
   if (Math.round(totalPct) !== 100) {
     return res.status(400).json({ error: `Fee shares must total 100%, got ${totalPct}%` });
   }
 
-  const headers = {
-    'Content-Type': 'application/json',
-    'x-api-key': apiKey,
-  };
+  const headers = { 'x-api-key': apiKey };
 
   try {
-    // ── STEP 1: Upload metadata ──────────────────────────────────────
-    const metaBody = {
-      name,
-      symbol,
-      description: description || `Support open-source contributors of ${repoUrl || name}`,
-      ...(imageUrl ? { image: imageUrl } : {}),
-      attributes: [
-        { trait_type: 'Platform', value: 'GitBags' },
-        { trait_type: 'Repository', value: repoUrl || '' },
-        { trait_type: 'Contributors', value: String(feeShares.length) },
-      ],
-    };
+    // STEP 1: Create token info + metadata (multipart/form-data)
+    const form = new FormData();
+    form.append('name', name);
+    form.append('symbol', symbol.toUpperCase());
+    form.append('description', description || `Support open-source contributors of ${repoUrl || name}`);
+    if (imageUrl) form.append('imageUrl', imageUrl);
+    if (website || repoUrl) form.append('website', website || repoUrl);
 
-    const metaRes = await fetch(`${BAGS_BASE_URL}/tokens/metadata`, {
+    const infoRes = await fetch(`${BASE}/token-launch/create-token-info`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(metaBody),
+      body: form,
     });
-    if (!metaRes.ok) {
-      const err = await metaRes.json().catch(() => ({}));
-      throw new Error(`Metadata upload failed: ${err.message || metaRes.statusText}`);
+    if (!infoRes.ok) {
+      const err = await infoRes.json().catch(() => ({ message: infoRes.statusText }));
+      throw new Error(`[Token Info] ${err.message || JSON.stringify(err)}`);
     }
-    const { metadataUri } = await metaRes.json();
+    const infoData = await infoRes.json();
+    const { tokenMint, tokenMetadata } = infoData.response;
 
-    // ── STEP 2: Create fee-share config ──────────────────────────────
-    // Bags fee sharing: creator always first, then fee claimers
-    // percentage values are in basis points of the creator's share
-    // We distribute the creator's 50% of fees among contributors
-    const feeClaimers = feeShares.map(f => ({
-      wallet: f.wallet,
-      percentageOfCreatorFees: Math.round(f.percentage * 100), // basis points
-    }));
+    // STEP 2: Create fee-share config transaction
+    const claimersArray = feeShares.map(f => f.wallet);
+    const basisPointsArray = feeShares.map(f => Math.round(f.percentage * 100));
 
-    const configRes = await fetch(`${BAGS_BASE_URL}/tokens/fee-share-config`, {
+    const feeConfigRes = await fetch(`${BASE}/fee-share/config`, {
       method: 'POST',
-      headers,
+      headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        creator: creatorWallet,
-        feeClaimers,
-        bagsConfigType: 'fa29606e-5e48-4c37-827f-4b03d58ee23d', // Default: 2%/2%
+        payer: creatorWallet,
+        baseMint: tokenMint,
+        claimersArray,
+        basisPointsArray,
+        bagsConfigType: 'fa29606e-5e48-4c37-827f-4b03d58ee23d',
       }),
     });
-    if (!configRes.ok) {
-      const err = await configRes.json().catch(() => ({}));
-      throw new Error(`Fee config failed: ${err.message || configRes.statusText}`);
+    if (!feeConfigRes.ok) {
+      const err = await feeConfigRes.json().catch(() => ({ message: feeConfigRes.statusText }));
+      throw new Error(`[Fee Config] ${err.message || JSON.stringify(err)}`);
     }
-    const { configId } = await configRes.json();
+    const feeConfigData = await feeConfigRes.json();
+    const { meteoraConfigKey, transactions: feeShareTxs, needsCreation } = feeConfigData.response;
 
-    // ── STEP 3: Build unsigned token creation transaction ─────────────
-    const createRes = await fetch(`${BAGS_BASE_URL}/tokens/create`, {
+    // STEP 3: Create launch transaction
+    const launchRes = await fetch(`${BASE}/token-launch/create-launch-transaction`, {
       method: 'POST',
-      headers,
+      headers: { ...headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        creator: creatorWallet,
-        metadataUri,
-        configId,
-        // Optional: initial buy (0 = no initial buy, cleaner for demo)
-        initialBuyAmountSol: 0,
+        ipfs: tokenMetadata,
+        tokenMint,
+        wallet: creatorWallet,
+        initialBuyLamports: 0,
+        configKey: meteoraConfigKey,
       }),
     });
-    if (!createRes.ok) {
-      const err = await createRes.json().catch(() => ({}));
-      throw new Error(`Token creation failed: ${err.message || createRes.statusText}`);
+    if (!launchRes.ok) {
+      const err = await launchRes.json().catch(() => ({ message: launchRes.statusText }));
+      throw new Error(`[Launch Tx] ${err.message || JSON.stringify(err)}`);
     }
-    const { transactions, mint } = await createRes.json();
+    const launchData = await launchRes.json();
 
-    // Return unsigned transaction(s) + mint address to frontend
     return res.status(200).json({
       success: true,
-      mint,
-      transactions, // base64-encoded unsigned VersionedTransaction(s)
-      configId,
-      metadataUri,
-      viewUrl: `https://bags.fm/token/${mint}`,
+      tokenMint,
+      tokenMetadata,
+      meteoraConfigKey,
+      needsCreation,
+      feeShareTransactions: needsCreation ? (feeShareTxs || []).map(t => t.transaction) : [],
+      launchTransaction: launchData.response,
+      viewUrl: `https://bags.fm/token/${tokenMint}`,
     });
 
   } catch (err) {
-    console.error('[GitBags API Error]', err.message);
-    return res.status(500).json({
-      error: err.message,
-      stage: 'bags_api',
-    });
+    console.error('[GitBags API]', err.message);
+    return res.status(500).json({ error: err.message });
   }
 }
