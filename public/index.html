@@ -529,6 +529,73 @@
     .footer-logo { font-family: 'Space Mono', monospace; font-size: 14px; color: var(--green); }
     .footer-built { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--text-muted); letter-spacing: 1px; }
 
+    /* ── WALLET BUTTON ── */
+    .wallet-btn {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 8px 18px;
+      border: 1px solid var(--border-hover);
+      background: transparent;
+      color: var(--green);
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .wallet-btn:hover { background: var(--green-glow); }
+    .wallet-btn.connected { border-color: var(--green); background: var(--green-glow); }
+    .wallet-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
+    .wallet-dot.live { background: var(--green); animation: blink 1.5s infinite; }
+
+    /* ── API KEY MODAL ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.visible { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border-hover);
+      padding: 40px;
+      max-width: 520px;
+      width: 90%;
+    }
+    .modal-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      color: var(--green);
+      letter-spacing: 2px;
+      margin-bottom: 20px;
+    }
+    .modal-body { font-size: 14px; color: var(--text-dim); line-height: 1.7; margin-bottom: 24px; }
+    .modal-body code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--green);
+    }
+    .modal-close {
+      background: var(--green);
+      color: #000;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 12px 24px;
+      border: none;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+    }
+
     /* ── LOADING / ERROR ── */
     .loading-text {
       font-family: 'Space Mono', monospace;
@@ -604,7 +671,13 @@
 <!-- NAV -->
 <nav>
   <div class="logo">git<span>bags</span>.fm</div>
-  <span class="nav-badge">BAGS HACKATHON 2025</span>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="nav-badge">BAGS HACKATHON 2025</span>
+    <button class="wallet-btn" id="wallet-btn" onclick="connectWallet()">
+      <span class="wallet-dot" id="wallet-dot"></span>
+      <span id="wallet-label">CONNECT WALLET</span>
+    </button>
+  </div>
 </nav>
 
 <!-- HERO -->
@@ -802,6 +875,27 @@
   </div>
 </section>
 
+<!-- REAL LAUNCH MODAL -->
+<div class="modal-overlay" id="launch-modal">
+  <div class="modal">
+    <div class="modal-title">// REAL TOKEN LAUNCH</div>
+    <div class="modal-body">
+      To launch a real token on Bags.fm mainnet, you need:<br/><br/>
+      1. A <code>BAGS_API_KEY</code> from <a href="https://dev.bags.fm" target="_blank" style="color:var(--green)">dev.bags.fm</a><br/>
+      2. A Solana wallet connected (Phantom detected: <span id="modal-wallet">not connected</span>)<br/>
+      3. ~0.02 SOL for transaction fees<br/><br/>
+      Your fee split is enforced on-chain via the Bags v2 fee sharing program. Every contributor earns automatically — forever.<br/><br/>
+      <strong style="color:var(--text)">This demo shows a devnet simulation. Connect your wallet and add your API key to launch on mainnet.</strong>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;">
+      <a href="https://dev.bags.fm" target="_blank">
+        <button class="modal-close">GET API KEY →</button>
+      </a>
+      <button class="modal-close" style="background:transparent;color:var(--green);border:1px solid var(--border-hover);" onclick="closeLaunchModal()">RUN DEVNET SIM</button>
+    </div>
+  </div>
+</div>
+
 <footer>
   <div class="footer-logo">gitbags.fm</div>
   <div class="footer-built">BUILT FOR BAGS HACKATHON · 2025 · BY ALIE RIVALDO JANNEH</div>
@@ -818,9 +912,52 @@
     document.getElementById('app').scrollIntoView({ behavior: 'smooth' });
   }
 
-  // ── STATE ──
+  // ── WALLET STATE ──
+  let walletAddress = null;
   let contributors = [];
   let repoSlug = '';
+
+  // ── PHANTOM WALLET CONNECT ──
+  async function connectWallet() {
+    if (walletAddress) {
+      // Already connected — show address
+      navigator.clipboard?.writeText(walletAddress);
+      return;
+    }
+    const phantom = window?.solana;
+    if (!phantom?.isPhantom) {
+      window.open('https://phantom.app/', '_blank');
+      return;
+    }
+    try {
+      const resp = await phantom.connect();
+      walletAddress = resp.publicKey.toString();
+      const short = walletAddress.slice(0,4) + '...' + walletAddress.slice(-4);
+      document.getElementById('wallet-label').textContent = short;
+      document.getElementById('wallet-dot').classList.add('live');
+      document.getElementById('wallet-btn').classList.add('connected');
+      document.getElementById('modal-wallet').textContent = short;
+      document.getElementById('modal-wallet').style.color = 'var(--green)';
+    } catch (e) {
+      console.log('Wallet connect cancelled');
+    }
+  }
+
+  // Auto-connect if previously approved
+  window.addEventListener('load', async () => {
+    if (window?.solana?.isPhantom) {
+      try {
+        const resp = await window.solana.connect({ onlyIfTrusted: true });
+        walletAddress = resp.publicKey.toString();
+        const short = walletAddress.slice(0,4) + '...' + walletAddress.slice(-4);
+        document.getElementById('wallet-label').textContent = short;
+        document.getElementById('wallet-dot').classList.add('live');
+        document.getElementById('wallet-btn').classList.add('connected');
+        document.getElementById('modal-wallet').textContent = short;
+        document.getElementById('modal-wallet').style.color = 'var(--green)';
+      } catch {}
+    }
+  });
 
   // ── FETCH CONTRIBUTORS ──
   async function fetchContributors() {
@@ -918,30 +1055,35 @@
     document.getElementById('token-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // ── LAUNCH TOKEN (devnet simulation) ──
+  // ── LAUNCH TOKEN ──
   async function launchToken() {
     const name = document.getElementById('token-name').value.trim();
     const ticker = document.getElementById('token-ticker').value.trim();
     if (!name || !ticker) { showError('Please fill in token name and ticker.'); return; }
+    // Show real launch info modal first
+    document.getElementById('launch-modal').classList.add('visible');
+  }
 
+  function closeLaunchModal() {
+    document.getElementById('launch-modal').classList.remove('visible');
+    runDevnetSimulation();
+  }
+
+  async function runDevnetSimulation() {
+    const name = document.getElementById('token-name').value.trim();
+    const ticker = document.getElementById('token-ticker').value.trim();
     const btn = document.getElementById('launch-btn');
     btn.disabled = true;
-    btn.textContent = '⟳ Launching on devnet...';
-
-    // Simulate async launch
+    btn.textContent = '⟳ Simulating devnet launch...';
     await new Promise(r => setTimeout(r, 2200));
-
-    // Show success
     const fakeTx = Array.from({length: 64}, () => '0123456789abcdef'[Math.floor(Math.random()*16)]).join('');
     document.getElementById('tx-hash').textContent = fakeTx;
     document.getElementById('success-desc').textContent =
-      `"${name}" ($${ticker}) is live on Bags.fm. ${contributors.length} contributors will earn fee splits automatically from every trade.`;
-
+      `"${name}" ($${ticker}) simulated on devnet. ${contributors.length} contributors configured for fee splits. Connect your Bags API key to launch on mainnet.`;
     document.getElementById('token-section').classList.remove('visible');
     document.getElementById('contributors-section').classList.remove('visible');
     document.getElementById('success-section').classList.add('visible');
     document.getElementById('success-section').scrollIntoView({ behavior: 'smooth' });
-
     btn.disabled = false;
     btn.textContent = '⚡ LAUNCH TOKEN ON BAGS.FM';
   }
