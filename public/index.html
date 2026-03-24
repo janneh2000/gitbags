@@ -550,6 +550,25 @@
     .wallet-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); }
     .wallet-dot.live { background: var(--green); animation: blink 1.5s infinite; }
 
+    /* wallet dropdown items */
+    .wallet-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 18px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+      letter-spacing: 0.5px;
+    }
+    .wallet-menu-item:last-child { border-bottom: none; }
+    .wallet-menu-item:hover { background: var(--green-glow); color: var(--green); }
+    .wallet-menu-item.danger:hover { background: rgba(255,68,102,0.1); color: var(--red); }
+    .wallet-menu-item img { width: 18px; height: 18px; border-radius: 4px; }
+
     /* ── API KEY MODAL ── */
     .modal-overlay {
       display: none;
@@ -671,12 +690,16 @@
 <!-- NAV -->
 <nav>
   <div class="logo">git<span>bags</span>.fm</div>
-  <div style="display:flex;align-items:center;gap:12px;">
-    <span class="nav-badge">BAGS HACKATHON 2025</span>
-    <button class="wallet-btn" id="wallet-btn" onclick="connectWallet()">
+  <div style="display:flex;align-items:center;gap:12px;position:relative;">
+    <span class="nav-badge">BAGS HACKATHON 2026</span>
+    <button class="wallet-btn" id="wallet-btn" onclick="toggleWalletMenu()">
       <span class="wallet-dot" id="wallet-dot"></span>
       <span id="wallet-label">CONNECT WALLET</span>
     </button>
+    <!-- Wallet dropdown -->
+    <div id="wallet-menu" style="display:none;position:absolute;right:0;top:48px;background:var(--bg2);border:1px solid var(--border-hover);min-width:210px;z-index:300;">
+      <div id="wallet-menu-inner"></div>
+    </div>
   </div>
 </nav>
 
@@ -943,7 +966,7 @@
 
 <footer>
   <div class="footer-logo">gitbags.fm</div>
-  <div class="footer-built">BUILT FOR BAGS HACKATHON · 2025 · BY ALIE RIVALDO JANNEH</div>
+  <div class="footer-built">BUILT FOR BAGS HACKATHON · 2026 · BY ALIE RIVALDO JANNEH</div>
 </footer>
 
 <script>
@@ -959,49 +982,154 @@
 
   // ── WALLET STATE ──
   let walletAddress = null;
+  let walletProvider = null;
+
+  // ── APP STATE ──
   let contributors = [];
   let repoSlug = '';
 
-  // ── PHANTOM WALLET CONNECT ──
-  async function connectWallet() {
-    if (walletAddress) {
-      // Already connected — show address
-      navigator.clipboard?.writeText(walletAddress);
-      return;
+  // ── WALLET MENU TOGGLE ──
+  function toggleWalletMenu() {
+    const menu = document.getElementById('wallet-menu');
+    if (menu.style.display === 'none') {
+      renderWalletMenu();
+      menu.style.display = 'block';
+    } else {
+      menu.style.display = 'none';
     }
+  }
+
+  // Close menu on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#wallet-btn') && !e.target.closest('#wallet-menu')) {
+      document.getElementById('wallet-menu').style.display = 'none';
+    }
+  });
+
+  function renderWalletMenu() {
+    const inner = document.getElementById('wallet-menu-inner');
+    if (walletAddress) {
+      // Connected state — show address + disconnect
+      const short = walletAddress.slice(0,4) + '...' + walletAddress.slice(-4);
+      inner.innerHTML = `
+        <div class="wallet-menu-item" onclick="copyAddress()">
+          <span>📋</span> ${short} (copy)
+        </div>
+        <div class="wallet-menu-item" onclick="switchWallet()">
+          <span>🔄</span> SWITCH WALLET
+        </div>
+        <div class="wallet-menu-item danger" onclick="disconnectWallet()">
+          <span>✕</span> DISCONNECT
+        </div>
+      `;
+    } else {
+      // Not connected — show wallet options
+      const hasPhantom = !!window?.solana?.isPhantom;
+      const hasSolflare = !!window?.solflare?.isSolflare;
+      inner.innerHTML = `
+        <div style="padding:10px 18px;font-family:'Space Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:1px">SELECT WALLET</div>
+        <div class="wallet-menu-item" onclick="connectPhantom()">
+          <img src="https://phantom.app/img/phantom-logo.png" onerror="this.style.display='none'" />
+          PHANTOM ${hasPhantom ? '✓' : '↗'}
+        </div>
+        <div class="wallet-menu-item" onclick="connectSolflare()">
+          <img src="https://solflare.com/assets/logo.png" onerror="this.style.display='none'" />
+          SOLFLARE ${hasSolflare ? '✓' : '↗'}
+        </div>
+      `;
+    }
+  }
+
+  function setWalletConnected(address, provider) {
+    walletAddress = address;
+    walletProvider = provider;
+    const short = address.slice(0,4) + '...' + address.slice(-4);
+    document.getElementById('wallet-label').textContent = short;
+    document.getElementById('wallet-dot').classList.add('live');
+    document.getElementById('wallet-btn').classList.add('connected');
+    document.getElementById('modal-wallet').textContent = short;
+    document.getElementById('modal-wallet').style.color = 'var(--green)';
+    updatePreviewWallet();
+    document.getElementById('wallet-menu').style.display = 'none';
+  }
+
+  async function connectPhantom() {
     const phantom = window?.solana;
     if (!phantom?.isPhantom) {
       window.open('https://phantom.app/', '_blank');
+      document.getElementById('wallet-menu').style.display = 'none';
       return;
     }
     try {
       const resp = await phantom.connect();
-      walletAddress = resp.publicKey.toString();
-      const short = walletAddress.slice(0,4) + '...' + walletAddress.slice(-4);
-      document.getElementById('wallet-label').textContent = short;
-      document.getElementById('wallet-dot').classList.add('live');
-      document.getElementById('wallet-btn').classList.add('connected');
-      document.getElementById('modal-wallet').textContent = short;
-      document.getElementById('modal-wallet').style.color = 'var(--green)';
-      updatePreviewWallet();
-    } catch (e) {
-      console.log('Wallet connect cancelled');
-    }
+      setWalletConnected(resp.publicKey.toString(), 'phantom');
+    } catch (e) { console.log('Phantom cancelled'); }
   }
 
-  // Auto-connect if previously approved
+  async function connectSolflare() {
+    const solflare = window?.solflare;
+    if (!solflare?.isSolflare) {
+      window.open('https://solflare.com/', '_blank');
+      document.getElementById('wallet-menu').style.display = 'none';
+      return;
+    }
+    try {
+      await solflare.connect();
+      const address = solflare.publicKey.toString();
+      setWalletConnected(address, 'solflare');
+    } catch (e) { console.log('Solflare cancelled'); }
+  }
+
+  async function disconnectWallet() {
+    try {
+      if (walletProvider === 'phantom') await window?.solana?.disconnect();
+      if (walletProvider === 'solflare') await window?.solflare?.disconnect();
+    } catch {}
+    walletAddress = null;
+    walletProvider = null;
+    document.getElementById('wallet-label').textContent = 'CONNECT WALLET';
+    document.getElementById('wallet-dot').classList.remove('live');
+    document.getElementById('wallet-btn').classList.remove('connected');
+    document.getElementById('wallet-menu').style.display = 'none';
+    document.getElementById('modal-wallet').textContent = 'not connected';
+    document.getElementById('modal-wallet').style.color = '';
+    const el = document.getElementById('prev-wallet');
+    if (el) { el.textContent = 'Not connected'; el.style.color = ''; }
+  }
+
+  function switchWallet() {
+    disconnectWallet().then(() => {
+      setTimeout(() => { toggleWalletMenu(); }, 100);
+    });
+  }
+
+  function copyAddress() {
+    navigator.clipboard?.writeText(walletAddress);
+    const label = document.getElementById('wallet-label');
+    label.textContent = 'COPIED!';
+    setTimeout(() => {
+      label.textContent = walletAddress.slice(0,4) + '...' + walletAddress.slice(-4);
+    }, 1200);
+    document.getElementById('wallet-menu').style.display = 'none';
+  }
+
+  // Auto-connect on load (Phantom + Solflare)
   window.addEventListener('load', async () => {
+    // Try Phantom first
     if (window?.solana?.isPhantom) {
       try {
         const resp = await window.solana.connect({ onlyIfTrusted: true });
-        walletAddress = resp.publicKey.toString();
-        const short = walletAddress.slice(0,4) + '...' + walletAddress.slice(-4);
-        document.getElementById('wallet-label').textContent = short;
-        document.getElementById('wallet-dot').classList.add('live');
-        document.getElementById('wallet-btn').classList.add('connected');
-        document.getElementById('modal-wallet').textContent = short;
-        document.getElementById('modal-wallet').style.color = 'var(--green)';
-        updatePreviewWallet();
+        setWalletConnected(resp.publicKey.toString(), 'phantom');
+        return;
+      } catch {}
+    }
+    // Try Solflare
+    if (window?.solflare?.isSolflare) {
+      try {
+        await window.solflare.connect();
+        if (window.solflare.publicKey) {
+          setWalletConnected(window.solflare.publicKey.toString(), 'solflare');
+        }
       } catch {}
     }
   });
@@ -1160,8 +1288,8 @@
       }
 
       // Collect all transactions to sign in order
-      btn.textContent = '⟳ Sign in Phantom wallet...';
-      const phantom = window.solana;
+      btn.textContent = '⟳ Sign in wallet...';
+      const activeWallet = walletProvider === 'solflare' ? window.solflare : window.solana;
       const allTxs = [
         ...(data.feeShareTransactions || []),
         data.launchTransaction,
@@ -1176,7 +1304,7 @@
         const { VersionedTransaction } = await import('https://esm.sh/@solana/web3.js@1.98.4');
         const vtx = VersionedTransaction.deserialize(bytes);
         btn.textContent = '⟳ Broadcasting to Solana...';
-        const { signature } = await phantom.signAndSendTransaction(vtx);
+        const { signature } = await activeWallet.signAndSendTransaction(vtx);
         lastSig = signature;
       }
 
